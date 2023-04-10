@@ -1,21 +1,18 @@
-[![bdhammel](https://circleci.com/gh/bdhammel/ising-model.svg?style=shield)](https://app.circleci.com/pipelines/github/bdhammel/ising-model)
-
 # Ising Model
 
-Python code to simulate the Ising model of a Ferromagnet.
+A simulation of the Ising model.
 
-For a discussion of the theory, visit [my blog post](http://www.bdhammel.com/ising-model/).
+This implementation adds a region of *localized feedback* to study the effects of stochastic resonance.
 
 ![](./media/ising.png)
 
-The initial conditions of the ising lattice can be specified by the `tempature`, `initial state`, and `size parameters` of the model.
+The initial conditions of the lattice can be specified by the `temperature`, `initial-state`, and `size` parameters of the model.
 
-Running the simulation will output a video of system as it changes through out the run steps.
-
+Running the simulation will output a video of the system as it changes with every iteration. Most models need about `10*10^5` iterations to do anything interesting.
 
 ## Example
 
-The `--help` command can show to possible parameters for modifying the simulation 
+The `--help` command can show to possible parameters for modifying the simulation
 
 ~~~bash
 $ python ising.py --help
@@ -36,6 +33,7 @@ For example:
 $ python ising.py --temperature .8 --initial-state r --video
 ~~~
 
+Forked from [bdhammel/ising-model](https://github.com/bdhammel/ising-model).
 
 ## FAQ
 
@@ -48,7 +46,7 @@ dyld: Library not loaded: /usr/local/opt/x264/lib/libx264.152.dylib
   Reason: image not found
 ~~~
 
-Then you need to install ffmpeg 
+Then you need to install ffmpeg
 
 ~~~bash
 $ brew install ffmpeg
