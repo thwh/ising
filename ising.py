@@ -1,123 +1,123 @@
-import numpy as np
+import click
+from dataclasses import dataclass
 import matplotlib.pyplot as plt
 import matplotlib.animation as manimation
+import numpy as np
 from tqdm import tqdm
-import click
 
 
+@dataclass
 class IsingLattice:
-
-    def __init__(self, temperature, initial_state, size):
-        self.size = size
-        self.T = temperature
-        self.system = self._build_system(initial_state)
+    size: int
+    T: float
 
     @property
     def sqr_size(self):
         return (self.size, self.size)
 
-    def _build_system(self, initial_state):
-        """Build the system
 
-        Build either a randomly distributed system or a homogeneous system (for
-        watching the deterioration of magnetization
+def BuildSystem(initial_state, size, temperature):
+    """Build the system
 
-        Parameters
-        ----------
-        initial_state : str: "r" or other
-            Initial state of the lattice.  currently only random ("r") initial
-            state, or uniformly magnetized, is supported
-        """
+    Build either a randomly distributed system or a homogeneous system (for
+    watching the deterioration of magnetization
 
-        if initial_state == 'r':
-            system = np.random.choice([-1, 1], self.sqr_size)
-        elif initial_state == 'u':
-            system = np.ones(self.sqr_size)
-        else:
-            raise ValueError(
-                "Initial State must be 'r', random, or 'u', uniform"
-            )
+    Parameters
+    ----------
+    initial_state : str: "r" or other
+        Initial state of the lattice.  currently only random ("r") initial
+        state, or uniformly magnetized, is supported
+    """
 
-        return system
+    lattice = IsingLattice(size, temperature)
 
-    def _bc(self, i):
-        """Apply periodic boundary condition
-
-        Check if a lattice site coordinate falls out of bounds. If it does,
-        apply periodic boundary condition
-
-        Assumes lattice is square
-
-        Parameters
-        ----------
-        i : int
-            lattice site coordinate
-
-        Return
-        ------
-        int
-            corrected lattice site coordinate
-        """
-        if i >= self.size:
-            return 0
-        if i < 0:
-            return self.size - 1
-        else:
-            return i
-
-    def energy(self, N, M):
-        """Calculate the energy of spin interaction at a given lattice site
-        i.e. the interaction of a Spin at lattice site n,m with its 4 neighbors
-
-        - S_n,m*(S_n+1,m + Sn-1,m + S_n,m-1, + S_n,m+1)
-
-        Parameters
-        ----------
-        N : int
-            lattice site coordinate
-        M : int
-            lattice site coordinate
-
-        Return
-        ------
-        float
-            energy of the site
-        """
-        return -2*self.system[N, M]*(
-            self.system[self._bc(N - 1), M] + self.system[self._bc(N + 1), M]
-            + self.system[N, self._bc(M - 1)] + self.system[N, self._bc(M + 1)]
+    if initial_state == 'r':
+        lattice.system = np.random.choice([-1, 1], lattice.sqr_size)
+    elif initial_state == 'u':
+        lattice.system = np.ones(sqr_size)
+    else:
+        raise ValueError(
+            "Initial State must be 'r', random, or 'u', uniform"
         )
-
-    @property
-    def internal_energy(self):
-        e = 0
-        E = 0
-        E_2 = 0
-
-        for i in range(self.size):
-            for j in range(self.size):
-                e = self.energy(i, j)
-                E += e
-                E_2 += e**2
-
-        U = (1./self.size**2)*E
-        U_2 = (1./self.size**2)*E_2
-
-        return U, U_2
-
-    @property
-    def heat_capacity(self):
-        U, U_2 = self.internal_energy
-        return U_2 - U**2
-
-    @property
-    def magnetization(self):
-        """Find the overall magnetization of the system
-        """
-        return np.abs(np.sum(self.system)/self.size**2)
+    return lattice
 
 
-def run(lattice, epochs, video=True):
+def BoundaryCondition(i, lattice):
+    """Apply periodic boundary condition
+
+    Check if a lattice site coordinate falls out of bounds. If it does,
+    apply periodic boundary condition
+
+    Parameters
+    ----------
+    i : int
+        lattice site coordinate
+
+    Return
+    ------
+    int
+        corrected lattice site coordinate
+    """
+    return i % lattice.size
+
+
+def CalculateEnergy(lattice, N, M):
+    """Calculate the energy of spin interaction at a given lattice site
+    i.e. the interaction of a Spin at lattice site n,m with its 4 neighbors
+
+    - S_n,m*(S_n+1,m + Sn-1,m + S_n,m-1, + S_n,m+1)
+
+    Parameters
+    ----------
+    N : int
+        lattice site coordinate
+    M : int
+        lattice site coordinate
+
+    Return
+    ------
+    float
+        energy of the site
+    """
+
+    neighbor_energy = lattice.system[BoundaryCondition(N - 1, lattice), M] + lattice.system[BoundaryCondition(N + 1, lattice), M] + lattice.system[N, BoundaryCondition(M - 1, lattice)] + lattice.system[N, BoundaryCondition(M + 1, lattice)]
+    # neighbor_energy = 0
+    # for n in range(N-1, N+2, 2):
+    #     neighbor_energy += lattice.system[BoundaryCondition(n, lattice), M]
+    # for m in range(M-1, M+2, 2):
+    #     neighbor_energy += lattice.system[N, BoundaryCondition(m, lattice)]
+    return -2*lattice.system[N, M] * neighbor_energy
+
+
+def InternalEnergy(lattice):
+    e = 0
+    E = 0
+    E_2 = 0
+
+    for i in range(lattice.size):
+        for j in range(lattice.size):
+            e = CalculateEnergy(lattice, i, j)
+            E += e
+            E_2 += e**2
+
+    U = (1/lattice.size**2)*E
+    U_2 = (1/lattice.size**2)*E_2
+
+    return U, U_2
+
+
+def HeatCapacity(lattice):
+    U, U_2 = InternalEnergy(lattice)
+    return U_2 - U**2
+
+
+def Magnetization(lattice):
+    """Find the overall magnetization of the system
+    """
+    return np.abs(np.sum(lattice.system)/lattice.size**2)
+
+
+def Run(lattice, epochs, video=True):
     """Run the simulation
     """
 
@@ -126,13 +126,13 @@ def run(lattice, epochs, video=True):
 
     fig = plt.figure()
 
-    with writer.saving(fig, "ising.mp4", 100):
+    with writer.saving(fig, "ising.mp4", dpi=100):
         for epoch in tqdm(range(epochs)):
             # Randomly select a site on the lattice
             N, M = np.random.randint(0, lattice.size, 2)
 
             # Calculate energy of a flipped spin
-            E = -1*lattice.energy(N, M)
+            E = -1*CalculateEnergy(lattice, N, M)
 
             # "Roll the dice" to see if the spin is flipped
             if E <= 0.:
@@ -178,18 +178,20 @@ def run(lattice, epochs, video=True):
     help='Number of iterations to run the simulation for'
 )
 @click.option(
-    '--video',
+    '--video', '-v',
     is_flag=True,
+    default=True,
     help='Record a video of the simulation progression'
 )
 def main(temperature, initial_state, size, epochs, video):
-    lattice = IsingLattice(
-        temperature=temperature, initial_state=initial_state, size=size
+    lattice = BuildSystem(
+        initial_state=initial_state, size=size, temperature=temperature
     )
-    run(lattice, epochs, video)
+    print(f'{lattice.system = }')
+    Run(lattice, epochs, video)
 
-    print(f"{'Net Magnetization [%]:':.<25}{lattice.magnetization:.2f}")
-    print(f"{'Heat Capacity [AU]:':.<25}{lattice.heat_capacity:.2f}")
+    print(f"{'Net Magnetization [%]:':.<25}{Magnetization(lattice):.2f}")
+    print(f"{'Heat Capacity [AU]:':.<25}{HeatCapacity(lattice):.2f}")
 
 
 if __name__ == "__main__":
