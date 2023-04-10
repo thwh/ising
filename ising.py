@@ -97,6 +97,30 @@ def CalculateEnergy(lattice, N, M):
     return -2 * lattice.system[N, M] * neighbor_energy
 
 
+def UpdateLattice(lattice):
+    # Randomly select a site on the lattice
+    N, M = np.random.randint(0, lattice.size, 2)
+
+    # Calculate energy delta of a flipped spin
+    ΔE = -1*CalculateEnergy(lattice, N, M)
+
+    # if energetic change is dissipative
+    if ΔE <= 0.0:
+        lattice.system[N, M] *= -1
+
+    # Or, if e^(-ΔE*β) > some [0, 1]
+    #
+    # Here β is the thermodynamic beta, which is 1/kT, where k is the
+    # Boltzmann constant.
+    #
+    # That constant is thrown out when not dealing with molecular
+    # movements. So we're left with e^(-ΔE * 1/T):
+    elif np.exp(-ΔE * 1/lattice.T) > np.random.rand():
+        lattice.system[N, M] *= -1
+
+    return lattice
+
+
 def InternalEnergy(lattice):
     """Calculate the internal energy of the system.
 
@@ -149,17 +173,8 @@ def Run(lattice, epochs, video=True):
 
     with writer.saving(fig, "ising.mp4", dpi=100):
         for epoch in tqdm(range(epochs)):
-            # Randomly select a site on the lattice
-            N, M = np.random.randint(0, lattice.size, 2)
 
-            # Calculate energy of a flipped spin
-            E = -1*CalculateEnergy(lattice, N, M)
-
-            # "Roll the dice" to see if the spin is flipped
-            if E <= 0.:
-                lattice.system[N, M] *= -1
-            elif np.exp(-E/lattice.T) > np.random.rand():
-                lattice.system[N, M] *= -1
+            lattice = UpdateLattice(lattice)
 
             if video and epoch % (epochs//75) == 0:
                 img = plt.imshow(
