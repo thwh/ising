@@ -10,10 +10,7 @@ from tqdm import tqdm
 class IsingLattice:
     size: int
     T: float
-
-    @property
-    def sqr_size(self):
-        return (self.size, self.size)
+    system: np.array
 
 
 def BuildSystem(initial_state, size, temperature):
@@ -24,22 +21,30 @@ def BuildSystem(initial_state, size, temperature):
 
     Parameters
     ----------
-    initial_state : str: "r" or other
-        Initial state of the lattice.  currently only random ("r") initial
-        state, or uniformly magnetized, is supported
-    """
+    initial_state : str
+        Initial state of the lattice.  currently only random 'r' initial
+        state, or 'u' uniformly magnetized, is supported
+    size : int
+        Size of the lattice.
+    temperature : float
+        Global temperature of the system.
 
-    lattice = IsingLattice(size, temperature)
+    Return
+    ------
+    IsingLattice
+        dataclass instance
+    """
+    sq_size = (size, size)
 
     if initial_state == 'r':
-        lattice.system = np.random.choice([-1, 1], lattice.sqr_size)
+        a = np.random.choice([-1, 1], sq_size)
     elif initial_state == 'u':
-        lattice.system = np.ones(sqr_size)
+        a = np.ones(sq_size)
     else:
         raise ValueError(
             "Initial State must be 'r', random, or 'u', uniform"
         )
-    return lattice
+    return IsingLattice(size, temperature, a)
 
 
 def BoundaryCondition(i, lattice):
@@ -52,6 +57,8 @@ def BoundaryCondition(i, lattice):
     ----------
     i : int
         lattice site coordinate
+    lattice : np.array
+        Nested lists representing the 2D lattice.
 
     Return
     ------
@@ -69,6 +76,8 @@ def CalculateEnergy(lattice, N, M):
 
     Parameters
     ----------
+    lattice : np.array
+        Nested lists representing the 2D lattice.
     N : int
         lattice site coordinate
     M : int
@@ -80,16 +89,28 @@ def CalculateEnergy(lattice, N, M):
         energy of the site
     """
 
-    neighbor_energy = lattice.system[BoundaryCondition(N - 1, lattice), M] + lattice.system[BoundaryCondition(N + 1, lattice), M] + lattice.system[N, BoundaryCondition(M - 1, lattice)] + lattice.system[N, BoundaryCondition(M + 1, lattice)]
-    # neighbor_energy = 0
-    # for n in range(N-1, N+2, 2):
-    #     neighbor_energy += lattice.system[BoundaryCondition(n, lattice), M]
-    # for m in range(M-1, M+2, 2):
-    #     neighbor_energy += lattice.system[N, BoundaryCondition(m, lattice)]
-    return -2*lattice.system[N, M] * neighbor_energy
+    neighbor_energy = 0
+    for n in (N-1, N+1):
+        neighbor_energy += lattice.system[BoundaryCondition(n, lattice), M]
+    for m in (M-1, M+1):
+        neighbor_energy += lattice.system[N, BoundaryCondition(m, lattice)]
+    return -2 * lattice.system[N, M] * neighbor_energy
 
 
 def InternalEnergy(lattice):
+    """Calculate the internal energy of the system.
+
+    Parameters
+    ----------
+    lattice : np.array
+        Nested lists representing the 2D lattice.
+
+    Return
+    ------
+    float, float
+        energy and first exponent
+    """
+
     e = 0
     E = 0
     E_2 = 0
@@ -187,7 +208,6 @@ def main(temperature, initial_state, size, epochs, video):
     lattice = BuildSystem(
         initial_state=initial_state, size=size, temperature=temperature
     )
-    print(f'{lattice.system = }')
     Run(lattice, epochs, video)
 
     print(f"{'Net Magnetization [%]:':.<25}{Magnetization(lattice):.2f}")
